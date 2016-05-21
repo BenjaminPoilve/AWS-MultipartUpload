@@ -1,0 +1,125 @@
+<!doctype html>
+<html>
+<head>
+
+
+
+  <script   src="https://code.jquery.com/jquery-2.2.3.min.js" ></script>
+</head>
+
+<body  >
+  <input type="file" id="file_input" multiple/>
+  <p id="status">Please select a file</p>
+
+
+
+  <script>
+  var HOST="http://localhost:8001";
+  (function() {
+    document.getElementById("file_input").onchange = function(){
+      var file = document.getElementById("file_input").files;
+
+      if(file.size < 1){
+        alert("Upload  files");
+      }
+      else{
+      multiPartUpload(file[0],'test');
+
+
+      }
+    };
+  })();
+
+  function processNextChunk(reader, file,chunkID,chunkSize){
+    if(loaded <= total){
+            blob = file.slice(loaded,loaded+step+1);
+            reader.readAsBinaryString(blob);
+    }else{
+            loaded = total;
+    }
+  }
+
+  function multiPartUpload(file,path){
+    var chunkSize = 1024*10;
+    var fileSize = file.size;
+    var maxID=fileSize/chunkSize;
+    var chunkID=1;
+
+    httpPostAsync(HOST+'/sign_s3/init/'+fileSize+'/'+chunkSize+'/'+path+'/'+file.name ,function(data){
+      if(data==1){
+        var reader = new FileReader();
+
+        reader.onprogress = function(e){
+                var progress = (chunkID/maxID) * 100;
+                console.log(chunkID);
+        };
+
+        reader.onload = function(e){
+            get_signed_request(file , e.target.result, chunkID, path+'/'+file.name, function() {
+              if(chunkID < maxID){
+                chunkID+=1;
+                 blob = file.slice(chunkID*chunkSize,(chunkID+1)*chunkSize);
+                 reader.readAsBinaryString(blob);
+              }else{
+                loaded = total;
+              }
+            });
+        };
+        var blob = file.slice(0,chunkSize);
+        reader.readAsBinaryString(blob);
+
+
+      }else{
+        console.log("file already on platform, change name");
+      }
+
+    });
+  }
+
+  function get_signed_request(file, dataUpload, chunkID, path, callback){
+    console.log(path);
+    httpGetAsync(HOST+'/sign_s3/'+chunkID+'/'+path+"?file_name="+file.name+"&file_type="+file.type , function(data){
+      var response = JSON.parse(data);
+      upload_file(dataUpload, response.signed_request, response.url,callback);
+    });
+  }
+
+
+  function upload_file(file, signed_request,url,callback){
+    var xhr = new XMLHttpRequest();
+    xhr.open("PUT", signed_request);
+    xhr.setRequestHeader("Content-type", 'application/octet-stream');
+    xhr.setRequestHeader('x-amz-acl', 'public-read');
+    xhr.onload = function() {
+        callback();
+
+   };
+   xhr.onerror = function() {
+     alert("Could not upload file.");
+   };
+   xhr.send(file);
+  }
+
+  function httpGetAsync(theUrl, callback){
+    var xmlHttp = new XMLHttpRequest();
+    xmlHttp.onreadystatechange = function() {
+      if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+      callback(xmlHttp.responseText);
+    }
+    xmlHttp.open("GET", theUrl, true); // true for asynchronous
+    xmlHttp.send(null);
+  }
+
+  function httpPostAsync(theUrl, callback){
+    var xmlHttp = new XMLHttpRequest();
+    xmlHttp.onreadystatechange = function() {
+      if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+      callback(xmlHttp.responseText);
+    }
+    xmlHttp.open("POST", theUrl, true); // true for asynchronous
+    xmlHttp.send(null);
+  }
+  </script>
+</script>
+</body>
+</html>

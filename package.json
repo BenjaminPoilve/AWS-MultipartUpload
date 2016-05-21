@@ -1,0 +1,16 @@
+{
+  "name": "aws_multipart_upload",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.3.14",
+    "body-parser": "^1.15.1",
+    "express": "^4.13.4"
+  }
+}
